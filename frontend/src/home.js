@@ -76,7 +76,6 @@ export const ImageUpload = () => {
 
       setData(res.data);
     } catch (e) {
-      // Axios error handling
       const msg =
         e?.response?.data?.detail ||
         e?.response?.data?.message ||
@@ -127,11 +126,34 @@ export const ImageUpload = () => {
     setDragActive(false);
   };
 
+  const accepted = useMemo(() => {
+    // Treat missing "accepted" as accepted (backward compatible)
+    if (!data) return null;
+    if (typeof data.accepted === "boolean") return data.accepted;
+    return true;
+  }, [data]);
+
   const confidencePct = useMemo(() => {
-    if (!data?.confidence) return null;
+    if (!data) return null;
+    if (data.confidence === null || data.confidence === undefined) return null;
     const c = Number.parseFloat(data.confidence);
     if (Number.isNaN(c)) return null;
     return (c * 100).toFixed(2);
+  }, [data]);
+
+  const plantConfidencePct = useMemo(() => {
+    if (!data) return null;
+    if (data.plant_confidence === null || data.plant_confidence === undefined) return null;
+    const c = Number.parseFloat(data.plant_confidence);
+    if (Number.isNaN(c)) return null;
+    return (c * 100).toFixed(2);
+  }, [data]);
+
+  const topk = useMemo(() => {
+    if (!data) return [];
+    // support both keys (your backend used topk_imagenet / top5_imagenet at different times)
+    const arr = data.topk_imagenet || data.top5_imagenet || [];
+    return Array.isArray(arr) ? arr : [];
   }, [data]);
 
   return (
@@ -154,11 +176,7 @@ export const ImageUpload = () => {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10">
-              <img
-                src={logo}
-                alt="logo"
-                className="h-full w-full object-cover"
-              />
+              <img src={logo} alt="logo" className="h-full w-full object-cover" />
             </div>
             <div className="leading-tight">
               <p className="text-sm font-semibold tracking-wide text-white/90">
@@ -190,16 +208,16 @@ export const ImageUpload = () => {
               Potato Leaf Disease Detector
             </h1>
             <p className="mt-2 text-sm text-white/70">
-              Drag & drop an image (JPG/PNG) or browse to upload. Prediction will
-              run automatically.
+              Drag & drop an image (JPG/PNG) or browse to upload. Prediction will run automatically.
             </p>
 
             {/* Drop zone */}
             <div
-              className={`mt-5 flex min-h-[280px] w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed p-5 transition ${dragActive
+              className={`mt-5 flex min-h-[280px] w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed p-5 transition ${
+                dragActive
                   ? "border-emerald-400 bg-emerald-400/10"
                   : "border-white/15 bg-white/5 hover:bg-white/10"
-                }`}
+              }`}
               onDrop={onDrop}
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
@@ -295,12 +313,8 @@ export const ImageUpload = () => {
 
                   {error && (
                     <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4">
-                      <p className="text-sm font-semibold text-rose-200">
-                        Prediction failed
-                      </p>
-                      <p className="mt-1 break-words text-xs text-rose-100/80">
-                        {error}
-                      </p>
+                      <p className="text-sm font-semibold text-rose-200">Request failed</p>
+                      <p className="mt-1 break-words text-xs text-rose-100/80">{error}</p>
                     </div>
                   )}
                 </div>
@@ -320,31 +334,101 @@ export const ImageUpload = () => {
             {!data && !isLoading && (
               <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6">
                 <p className="text-sm text-white/70">
-                  Upload an image to see the predicted label and confidence
-                  score.
+                  Upload an image to see the predicted label and confidence score.
                 </p>
               </div>
             )}
 
-            {data && (
-              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6">
-                <div className="grid gap-4 md:grid-cols-2">
+            {/* Rejected case (accepted: false) */}
+            {data && accepted === false && (
+              <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-amber-200">Invalid image</p>
+                    <p className="mt-1 text-xs text-amber-100/80">
+                      {data.message ||
+                        "Please upload a plant/leaf image (potato leaf preferred)."}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">
+                    Not accepted
+                  </span>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-                    <p className="text-xs text-white/60">Label</p>
+                    <p className="text-xs text-white/60">Plant confidence</p>
                     <p className="mt-2 text-xl font-bold tracking-tight">
-                      {data.class}
+                      {plantConfidencePct ? `${plantConfidencePct}%` : "—"}
+                    </p>
+                    <p className="mt-1 text-xs text-white/50">
+                      Tip: use a clear leaf close-up, good lighting, leaf in focus.
                     </p>
                   </div>
 
                   <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-                    <p className="text-xs text-white/60">Confidence</p>
-                    <p className="mt-2 text-xl font-bold tracking-tight">
-                      {confidencePct ? `${confidencePct}%` : "—"}
+                    <p className="text-xs text-white/60">Required</p>
+                    <p className="mt-2 text-xl font-bold tracking-tight">≥ 80%</p>
+                    <p className="mt-1 text-xs text-white/50">
+                      We only proceed if the image looks like a plant/leaf.
                     </p>
                   </div>
                 </div>
 
-                {/* subtle note */}
+                {topk.length > 0 && (
+                  <details className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <summary className="cursor-pointer text-xs font-semibold text-white/80">
+                      View ImageNet hints (top predictions)
+                    </summary>
+                    <ul className="mt-3 space-y-2 text-xs text-white/70">
+                      {topk.slice(0, 10).map((item, idx) => {
+                        const label = Array.isArray(item) ? item[0] : String(item);
+                        const prob = Array.isArray(item) ? item[1] : null;
+                        const pct =
+                          prob === null || prob === undefined
+                            ? null
+                            : `${(Number(prob) * 100).toFixed(2)}%`;
+                        return (
+                          <li
+                            key={`${label}-${idx}`}
+                            className="flex items-center justify-between gap-3"
+                          >
+                            <span className="truncate">{label}</span>
+                            <span className="shrink-0 text-white/50">{pct || "—"}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            )}
+
+            {/* Accepted case */}
+            {data && accepted !== false && (
+              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="grid w-full gap-4 md:grid-cols-2">
+                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                      <p className="text-xs text-white/60">Label</p>
+                      <p className="mt-2 text-xl font-bold tracking-tight">
+                        {data.class || "—"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                      <p className="text-xs text-white/60">Confidence</p>
+                      <p className="mt-2 text-xl font-bold tracking-tight">
+                        {confidencePct ? `${confidencePct}%` : "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200">
+                    Accepted
+                  </span>
+                </div>
+
                 <p className="mt-4 text-xs text-white/50">
                   Confidence is based on model probability output.
                 </p>
@@ -354,7 +438,7 @@ export const ImageUpload = () => {
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
               <p className="text-sm font-semibold text-white/90">Tips</p>
               <ul className="mt-2 space-y-2 text-xs text-white/70">
-                <li>• Use well-lit images with the leaf in focus.</li>
+                <li>• Use well-lit images with the leaf in the focus.</li>
                 <li>• Avoid backgrounds that cover the leaf surface.</li>
                 <li>• Try multiple angles if the result looks wrong.</li>
               </ul>
