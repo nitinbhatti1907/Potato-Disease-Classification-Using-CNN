@@ -5,8 +5,7 @@ import logo from "./logo.png";
 import bg from "./bg.png";
 
 /**
- * UI revamped with Tailwind (via CDN) + fully responsive layout.
- * Note: Tailwind CDN is added in /public/index.html.
+ * Old UI preserved + added hover/focus effects + HF production-safe URLs
  */
 export const ImageUpload = () => {
   const fileInputRef = useRef(null);
@@ -18,13 +17,45 @@ export const ImageUpload = () => {
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState("");
 
+  // ✅ IMPORTANT:
+  // - In Hugging Face (production), backend is served from SAME domain -> use "/predict"
+  // - In local dev, use REACT_APP_API_URL (base or full /predict) or fallback to http://127.0.0.1:8000
   const apiUrl = useMemo(() => {
-    // Allow both:
-    // 1) Full endpoint: http://127.0.0.1:8000/predict
-    // 2) Base URL: http://127.0.0.1:8000
     const raw = (process.env.REACT_APP_API_URL || "").trim();
+
+    // production (HF): default same-origin
+    if (process.env.NODE_ENV === "production") {
+      if (!raw) return "/predict";
+
+      // if user set full URL in env, respect it
+      if (raw.startsWith("http://") || raw.startsWith("https://")) {
+        const cleaned = raw.replace(/\/$/, "");
+        return cleaned.endsWith("/predict") ? cleaned : `${cleaned}/predict`;
+      }
+
+      // if user set "/predict" explicitly
+      return raw.startsWith("/") ? raw : `/${raw}`;
+    }
+
+    // local dev
     if (!raw) return "http://127.0.0.1:8000/predict";
     return raw.endsWith("/predict") ? raw : `${raw.replace(/\/$/, "")}/predict`;
+  }, []);
+
+  const docsUrl = useMemo(() => {
+    const raw = (process.env.REACT_APP_API_URL || "").trim();
+
+    if (process.env.NODE_ENV === "production") {
+      if (!raw) return "/docs";
+      if (raw.startsWith("http://") || raw.startsWith("https://")) {
+        const cleaned = raw.replace(/\/$/, "");
+        return `${cleaned}/docs`;
+      }
+      return raw.startsWith("/") ? `${raw}/docs` : `/${raw}/docs`;
+    }
+
+    const base = (raw || "http://127.0.0.1:8000").replace(/\/$/, "");
+    return `${base}/docs`;
   }, []);
 
   const resetAll = () => {
@@ -64,13 +95,10 @@ export const ImageUpload = () => {
       setError("");
 
       const formData = new FormData();
-      // backend expects "file"
       formData.append("file", selectedFile);
 
       const res = await axios.post(apiUrl, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
         timeout: 60000,
       });
 
@@ -127,10 +155,9 @@ export const ImageUpload = () => {
   };
 
   const accepted = useMemo(() => {
-    // Treat missing "accepted" as accepted (backward compatible)
     if (!data) return null;
     if (typeof data.accepted === "boolean") return data.accepted;
-    return true;
+    return true; // backward compatible
   }, [data]);
 
   const confidencePct = useMemo(() => {
@@ -151,7 +178,6 @@ export const ImageUpload = () => {
 
   const topk = useMemo(() => {
     if (!data) return [];
-    // support both keys (your backend used topk_imagenet / top5_imagenet at different times)
     const arr = data.topk_imagenet || data.top5_imagenet || [];
     return Array.isArray(arr) ? arr : [];
   }, [data]);
@@ -170,12 +196,11 @@ export const ImageUpload = () => {
           opacity: 0.6,
         }}
       />
-
       {/* Top Nav */}
       <header className="sticky top-0 z-20 border-b border-white/10 bg-slate-950/70 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10">
+            <div className="h-9 w-9 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10 transition hover:scale-[1.03] hover:bg-white/15">
               <img src={logo} alt="logo" className="h-full w-full object-cover" />
             </div>
             <div className="leading-tight">
@@ -187,44 +212,47 @@ export const ImageUpload = () => {
               </p>
             </div>
           </div>
-
           <a
-            href="/docs"
+            href={docsUrl}
             target="_blank"
             rel="noreferrer"
-            className="hidden rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/80 hover:bg-white/10 md:inline-flex"
+            className="hidden rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/80 transition
+                       hover:-translate-y-[1px] hover:bg-white/10 hover:shadow-lg hover:shadow-black/20
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 md:inline-flex"
           >
             API Docs
           </a>
         </div>
       </header>
-
       {/* Main */}
       <main className="mx-auto w-full max-w-6xl px-4 py-10">
         <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
           {/* Left: Uploader */}
-          <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 shadow-xl backdrop-blur">
+          <section
+            className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 shadow-xl backdrop-blur transition
+                       hover:-translate-y-[1px] hover:border-white/15 hover:bg-slate-950/70 hover:shadow-2xl hover:shadow-black/30"
+          >
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">
               Potato Leaf Disease Detector
             </h1>
             <p className="mt-2 text-sm text-white/70">
               Drag & drop an image (JPG/PNG) or browse to upload. Prediction will run automatically.
             </p>
-
             {/* Drop zone */}
             <div
-              className={`mt-5 flex min-h-[280px] w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed p-5 transition ${
-                dragActive
-                  ? "border-emerald-400 bg-emerald-400/10"
-                  : "border-white/15 bg-white/5 hover:bg-white/10"
-              }`}
+              className={`mt-5 flex min-h-[280px] w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed p-5 transition
+                ${
+                  dragActive
+                    ? "border-emerald-400 bg-emerald-400/10 shadow-lg shadow-emerald-500/10"
+                    : "border-white/15 bg-white/5 hover:border-white/25 hover:bg-white/10"
+                }`}
               onDrop={onDrop}
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
             >
               {!preview ? (
                 <>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 transition hover:scale-[1.04] hover:bg-white/15">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-6 w-6 text-white/80"
@@ -240,19 +268,19 @@ export const ImageUpload = () => {
                       />
                     </svg>
                   </div>
-
                   <p className="mt-4 text-center text-sm text-white/70">
                     Drag and drop an image of a potato plant leaf to process
                   </p>
-
                   <button
                     type="button"
                     onClick={onBrowseClick}
-                    className="mt-4 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400 active:scale-[0.99]"
+                    className="mt-4 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition
+                               hover:-translate-y-[1px] hover:bg-emerald-400 hover:shadow-lg hover:shadow-emerald-500/20
+                               active:translate-y-0 active:scale-[0.99]
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
                   >
                     Browse file
                   </button>
-
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -260,20 +288,21 @@ export const ImageUpload = () => {
                     className="hidden"
                     onChange={onFileInputChange}
                   />
-
                   <p className="mt-3 text-xs text-white/50">
                     Tip: Use clear leaf close-up for best results.
                   </p>
                 </>
               ) : (
                 <div className="w-full">
-                  <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+                  <div
+                    className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/30 transition
+                               hover:border-white/15 hover:shadow-2xl hover:shadow-black/30"
+                  >
                     <img
                       src={preview}
                       alt="preview"
                       className="h-[320px] w-full object-contain md:h-[360px]"
                     />
-
                     {/* loader overlay */}
                     {isLoading && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/50">
@@ -284,24 +313,25 @@ export const ImageUpload = () => {
                       </div>
                     )}
                   </div>
-
                   <div className="mt-4 flex flex-wrap gap-3">
                     <button
                       type="button"
                       onClick={onBrowseClick}
-                      className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 hover:bg-white/10"
+                      className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 transition
+                                 hover:-translate-y-[1px] hover:bg-white/10 hover:shadow-lg hover:shadow-black/20
+                                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
                     >
                       Change image
                     </button>
-
                     <button
                       type="button"
                       onClick={resetAll}
-                      className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-white/90"
+                      className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition
+                                 hover:-translate-y-[1px] hover:bg-white/90 hover:shadow-lg hover:shadow-black/20
+                                 active:translate-y-0"
                     >
                       Clear
                     </button>
-
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -310,9 +340,8 @@ export const ImageUpload = () => {
                       onChange={onFileInputChange}
                     />
                   </div>
-
                   {error && (
-                    <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4">
+                    <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 transition hover:border-rose-400/40">
                       <p className="text-sm font-semibold text-rose-200">Request failed</p>
                       <p className="mt-1 break-words text-xs text-rose-100/80">{error}</p>
                     </div>
@@ -321,27 +350,27 @@ export const ImageUpload = () => {
               )}
             </div>
           </section>
-
           {/* Right: Results */}
-          <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 shadow-xl backdrop-blur">
+          <section
+            className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 shadow-xl backdrop-blur transition
+                       hover:-translate-y-[1px] hover:border-white/15 hover:bg-slate-950/70 hover:shadow-2xl hover:shadow-black/30"
+          >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Prediction</h2>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70 transition hover:bg-white/10">
                 CNN Model
               </span>
             </div>
-
             {!data && !isLoading && (
-              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6">
+              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 transition hover:bg-white/10">
                 <p className="text-sm text-white/70">
                   Upload an image to see the predicted label and confidence score.
                 </p>
               </div>
             )}
-
             {/* Rejected case (accepted: false) */}
             {data && accepted === false && (
-              <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6">
+              <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6 transition hover:border-amber-400/40">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-amber-200">Invalid image</p>
@@ -354,9 +383,8 @@ export const ImageUpload = () => {
                     Not accepted
                   </span>
                 </div>
-
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 transition hover:bg-slate-950/60 hover:border-white/15">
                     <p className="text-xs text-white/60">Plant confidence</p>
                     <p className="mt-2 text-xl font-bold tracking-tight">
                       {plantConfidencePct ? `${plantConfidencePct}%` : "—"}
@@ -365,8 +393,7 @@ export const ImageUpload = () => {
                       Tip: use a clear leaf close-up, good lighting, leaf in focus.
                     </p>
                   </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 transition hover:bg-slate-950/60 hover:border-white/15">
                     <p className="text-xs text-white/60">Required</p>
                     <p className="mt-2 text-xl font-bold tracking-tight">≥ 80%</p>
                     <p className="mt-1 text-xs text-white/50">
@@ -374,10 +401,9 @@ export const ImageUpload = () => {
                     </p>
                   </div>
                 </div>
-
                 {topk.length > 0 && (
-                  <details className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <summary className="cursor-pointer text-xs font-semibold text-white/80">
+                  <details className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:bg-white/10">
+                    <summary className="cursor-pointer text-xs font-semibold text-white/80 transition hover:text-white">
                       View ImageNet hints (top predictions)
                     </summary>
                     <ul className="mt-3 space-y-2 text-xs text-white/70">
@@ -391,7 +417,7 @@ export const ImageUpload = () => {
                         return (
                           <li
                             key={`${label}-${idx}`}
-                            className="flex items-center justify-between gap-3"
+                            className="flex items-center justify-between gap-3 rounded-lg px-2 py-1 transition hover:bg-white/5"
                           >
                             <span className="truncate">{label}</span>
                             <span className="shrink-0 text-white/50">{pct || "—"}</span>
@@ -403,39 +429,34 @@ export const ImageUpload = () => {
                 )}
               </div>
             )}
-
             {/* Accepted case */}
             {data && accepted !== false && (
-              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6">
+              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 transition hover:bg-white/10 hover:border-white/15">
                 <div className="flex items-start justify-between gap-3">
                   <div className="grid w-full gap-4 md:grid-cols-2">
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 transition hover:bg-slate-950/60 hover:border-white/15">
                       <p className="text-xs text-white/60">Label</p>
                       <p className="mt-2 text-xl font-bold tracking-tight">
                         {data.class || "—"}
                       </p>
                     </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 transition hover:bg-slate-950/60 hover:border-white/15">
                       <p className="text-xs text-white/60">Confidence</p>
                       <p className="mt-2 text-xl font-bold tracking-tight">
                         {confidencePct ? `${confidencePct}%` : "—"}
                       </p>
                     </div>
                   </div>
-
                   <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200">
                     Accepted
                   </span>
                 </div>
-
                 <p className="mt-4 text-xs text-white/50">
                   Confidence is based on model probability output.
                 </p>
               </div>
             )}
-
-            <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:bg-white/10 hover:border-white/15">
               <p className="text-sm font-semibold text-white/90">Tips</p>
               <ul className="mt-2 space-y-2 text-xs text-white/70">
                 <li>• Use well-lit images with the leaf in the focus.</li>
@@ -443,35 +464,35 @@ export const ImageUpload = () => {
                 <li>• Try multiple angles if the result looks wrong.</li>
               </ul>
             </div>
-
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <a
-                href="/docs"
+                href={docsUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 hover:bg-white/10"
+                className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 transition
+                           hover:-translate-y-[1px] hover:bg-white/10 hover:shadow-lg hover:shadow-black/20"
               >
                 Open API Docs
               </a>
-
               <button
                 type="button"
                 onClick={resetAll}
-                className="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400"
+                className="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition
+                           hover:-translate-y-[1px] hover:bg-emerald-400 hover:shadow-lg hover:shadow-emerald-500/20
+                           active:translate-y-0"
               >
                 New Prediction
               </button>
             </div>
           </section>
         </div>
-
         <footer className="mt-10 pb-6 text-center text-xs text-white/50">
           Built with FastAPI + React • Deployed on Hugging Face Spaces by{" "}
           <a
             href="https://www.linkedin.com/in/bhattinitin/"
             target="_blank"
             rel="noreferrer"
-            className="font-semibold text-white/80 underline underline-offset-4 hover:text-white"
+            className="font-semibold text-white/80 underline underline-offset-4 transition hover:text-white"
           >
             Nitin Bhatti
           </a>
@@ -480,3 +501,6 @@ export const ImageUpload = () => {
     </div>
   );
 };
+
+// Keep both exports to avoid import issues
+export default ImageUpload;
