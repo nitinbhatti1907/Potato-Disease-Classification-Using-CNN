@@ -4,3 +4,4 @@ notebook
 tensorflow-addons
 tensorflow-model-optimization
 tensorflow
+python-multipart

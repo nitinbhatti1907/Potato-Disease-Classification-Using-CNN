@@ -11,6 +11,7 @@ app = FastAPI()
 origins = [
     "http://localhost",
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
 app.add_middleware(
@@ -28,6 +29,12 @@ CLASS_NAMES = ["Early Blight", "Late Blight", "Healthy"]
 def read_file_as_image(data) -> np.ndarray:
     image = np.array(Image.open(BytesIO(data)))
     return image
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 @app.post("/predict")
 async def predict(

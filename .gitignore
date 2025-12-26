@@ -1,2 +1,74 @@
-Temp
-potatoenv
+# =========================
+# Python / FastAPI
+# =========================
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+*.log
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# =========================
+# Environment / Secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Node / Frontend
+# =========================
+node_modules/
+**/node_modules/
+
+# Build outputs (React/Gatsby/Next common)
+build/
+dist/
+out/
+
+# Gatsby cache / build
+.cache/
+public/
+
+# NPM/Yarn logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Datasets (Training images are huge)
+# Only ignore dataset folders, NOT your UI images.
+# =========================
+Training/PlantVillage/
+Training/**/PlantVillage/
+
+# If you extracted raw datasets elsewhere under Training
+Training/data/
+Training/dataset/
+Training/datasets/
+
+# =========================
+# Optional: If your model file is large, ignore it
+# (ONLY enable this if you DON'T want to commit the model)
+# =========================
+# saved_models/
