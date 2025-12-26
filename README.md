@@ -8,16 +8,20 @@ app_port: 7860
 
 A CNN-based potato leaf disease classification project with a **FastAPI backend** and a **React frontend**.
 
+## 🔗 Live Demo
+- **App:** https://nb1907-potato-disease-classification-using-cnn.hf.space/
+- **API Docs (Swagger):** https://nb1907-potato-disease-classification-using-cnn.hf.space/docs
+
 ---
 
-## Setup for Python
+## Local Setup
 
-### 1) Install Python
-Install Python 3.11+ (recommended)  
-Setup instructions: https://wiki.python.org/moin/BeginnersGuide
+### 1) Python (Backend)
 
-### 2) Create and activate a virtual environment (recommended)
-From the project root:
+#### Prerequisites
+- Python 3.11+ recommended
+
+#### Create & activate virtual environment (recommended)
 
 **Windows (PowerShell)**
 ```bash
@@ -31,55 +35,73 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3) Install Python packages
-> Note: This repo currently contains `api/requirements.txt`.  
-> If you don’t have a `Training/requirements.txt` file, you can skip training dependencies.
-
+#### Install backend dependencies
+From the project root:
 ```bash
 pip install --upgrade pip
 pip install -r api/requirements.txt
 ```
 
-If your API uses image upload, ensure this is installed:
+#### Run the backend
+```bash
+cd api
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Backend URLs:
+- Swagger: http://127.0.0.1:8000/docs
+- Predict endpoint: `POST http://127.0.0.1:8000/predict`
+
+> If your API accepts image uploads, ensure `python-multipart` is installed:
 ```bash
 pip install python-multipart
 ```
 
 ---
 
-## Setup for ReactJS
+### 2) React (Frontend)
 
-### 1) Install Node.js + npm
-- Node.js: https://nodejs.org/en/download/package-manager/
-- npm: https://www.npmjs.com/get-npm
+#### Prerequisites
+- Node.js + npm
 
-### 2) Install dependencies
+#### Install dependencies
 ```bash
 cd frontend
 npm install
 ```
 
-### 3) Setup environment file
+#### Setup environment file
 Copy `.env.example` to `.env`:
-```bash
-# Windows
-copy .env.example .env
 
-# macOS/Linux
+**Windows**
+```bash
+copy .env.example .env
+```
+
+**macOS/Linux**
+```bash
 cp .env.example .env
 ```
 
-Update the API URL inside `frontend/.env`:
+Set the API URL inside `frontend/.env`:
 ```env
-REACT_APP_API_URL=http://127.0.0.1:8000
+REACT_APP_API_URL=http://127.0.0.1:8000/predict
 ```
+
+#### Run the frontend
+```bash
+npm start
+```
+
+Frontend will run at:
+- http://localhost:3000
 
 ---
 
 ## Training the Model (Optional)
 
 1. Download dataset from Kaggle: https://www.kaggle.com/arjuntejaswi/plant-village  
-2. Only keep folders related to Potatoes.
+2. Keep only folders related to Potatoes.
 3. Run Jupyter Notebook:
 
 ```bash
@@ -88,68 +110,31 @@ jupyter notebook
 ```
 
 4. Open your notebook (example: `model.ipynb`).
-5. Update dataset path in the notebook.
+5. Update the dataset path inside the notebook.
 6. Run all cells to train the model.
-7. Save the trained model inside `saved_models/` (example: `saved_models/1.keras`).
+7. Save the trained model inside:
+   - `saved_models/1.keras` (or update the path in `api/main.py`)
 
 ---
 
-## Using FastAPI (Backend)
+## Deployment (Hugging Face Spaces)
 
-### 1) Start the backend
-From the project root:
+This project is deployed as a **Docker Space** on Hugging Face:
+- https://nb1907-potato-disease-classification-using-cnn.hf.space/
 
-```bash
-cd api
-python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
-```
-
-### 2) Verify the backend
-Open Swagger UI:
-- http://127.0.0.1:8000/docs
-
-Your prediction endpoint:
-- `POST http://127.0.0.1:8000/predict`
-
-> If you are running the frontend at `http://localhost:3000`, ensure CORS is enabled in the API.
-
----
-
-## Running the Frontend
-
-### 1) Start the frontend
-From the project root:
-
-```bash
-cd frontend
-npm start
-```
-
-Frontend will run on:
-- http://localhost:3000
-
-### 2) Predict from UI
-Upload a potato leaf image → it calls:
-- `POST /predict` on the FastAPI server and displays the label + confidence.
+On Spaces, the frontend and backend run on the same domain, so the UI can call `/predict` without CORS issues.
 
 ---
 
 ## Common Issues
 
-### 1) 404 on prediction
-Make sure frontend is calling:
-- `http://127.0.0.1:8000/predict`
-(not just `http://127.0.0.1:8000/`)
+### 1) 404 when predicting
+Make sure the frontend calls:
+- `http://127.0.0.1:8000/predict` (local)
+Not:
+- `http://127.0.0.1:8000/`
 
-### 2) CORS / Network Error in browser
-Enable CORS in `api/main.py` and allow:
-- `http://localhost:3000`
-- `http://127.0.0.1:3000`
-
-Then restart backend.
-
-### 3) Model not found
+### 2) Model not found
 Ensure the model exists at:
 - `saved_models/1.keras`
-
-If you changed the model name/location, update the path in `api/main.py`.
+and the path in `api/main.py` matches the file location.
