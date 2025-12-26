@@ -5,6 +5,8 @@ import numpy as np
 from io import BytesIO
 from PIL import Image
 import tensorflow as tf
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
@@ -22,7 +24,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL = tf.keras.models.load_model("..\\saved_models\\1.keras")
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_PATH = (BASE_DIR / ".." / "saved_models" / "1.keras").resolve()
+
+MODEL = tf.keras.models.load_model(str(MODEL_PATH))
 
 CLASS_NAMES = ["Early Blight", "Late Blight", "Healthy"]
 
@@ -51,6 +56,13 @@ async def predict(
         'class': predicted_class,
         'confidence': float(confidence)
     }
+
+
+FRONTEND_BUILD_DIR = (BASE_DIR / ".." / "frontend" / "build").resolve()
+
+if FRONTEND_BUILD_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_BUILD_DIR), html=True), name="frontend")
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host='localhost', port=8000)

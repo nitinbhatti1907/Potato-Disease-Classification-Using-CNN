@@ -1,0 +1,17 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+node_modules/
+**/node_modules/
+.cache/
+public/
+build/
+dist/
+Training/PlantVillage/
+Training/data/
+Training/dataset/
+Training/datasets/
+.env
+.env.*
+.git

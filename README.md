@@ -1,4 +1,10 @@
-﻿# Potato-Disease-Classification-Using-CNN
+﻿---
+title: Potato Disease Classification Using CNN
+sdk: docker
+app_port: 7860
+---
+
+# Potato-Disease-Classification-Using-CNN
 
 A CNN-based potato leaf disease classification project with a **FastAPI backend** and a **React frontend**.
 
